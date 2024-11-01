@@ -3,11 +3,6 @@ IMAGE_BUILDER := $(RUNNER) buildx
 MACHINE := neuvector
 BUILDX_ARGS ?= --sbom=true --attest type=provenance,mode=max
 DEFAULT_PLATFORMS := linux/amd64,linux/arm64,linux/x390s,linux/riscv64
-TARGET_PLATFORMS ?= linux/amd64,linux/arm64
-STAGE_DIR=stage
-
-#TODO: FIXME
-REPO ?= holyspectral
 
 COMMIT = $(shell git rev-parse --short HEAD)
 ifeq ($(VERSION),)
@@ -40,16 +35,34 @@ ifeq ($(TAG),)
 	endif
 endif
 
-.PHONY: buildx-machine push-image
+.PHONY: buildx-machine test-image build-image push-image
+
+TARGET_PLATFORMS ?= linux/amd64,linux/arm64
+STAGE_DIR=stage
+REPO ?= neuvector
+IMAGE = $(REPO)/registry-adapter:$(TAG)
+BUILD_ACTION = --load
+
 
 buildx-machine:
 	docker buildx ls
 	@docker buildx ls | grep $(MACHINE) || \
 	docker buildx create --name=$(MACHINE) --platform=$(DEFAULT_PLATFORMS)
 
+test-image:
+	# Instead of loading image, target all platforms, effectivelly testing
+	# the build for the target architectures.
+	$(MAKE) build-image BUILD_ACTION="--platform=$(TARGET_PLATFORMS)"
+
+build-image: buildx-machine ## build (and load) the container image targeting the current platform.
+	$(IMAGE_BUILDER) build -f package/Dockerfile \
+		--builder $(MACHINE) $(IMAGE_ARGS) \
+		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t "$(IMAGE)" $(BUILD_ACTION) .
+	@echo "Built $(IMAGE)"
+
 
 push-image: buildx-machine
 	$(IMAGE_BUILDER) build -f package/Dockerfile \
 		--builder $(MACHINE) $(IMAGE_ARGS) $(IID_FILE_FLAG) $(BUILDX_ARGS) \
-		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --platform=$(TARGET_PLATFORMS) -t "$(REPO)/updater:$(TAG)" --push .
-	@echo "Pushed $(IMAGE)"
+		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --platform=$(TARGET_PLATFORMS) -t "$(REPO)/$(IMAGE_PREFIX)updater:$(TAG)" --push .
+	@echo "Pushed $(REPO)/$(IMAGE_PREFIX)updater:$(TAG)"

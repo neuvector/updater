@@ -33,27 +33,19 @@ jobs:
       run: |
         TARGET=${{ github.ref_name }}
         echo "TAG=${TARGET#v}" >> $GITHUB_ENV
-    - name: Publish public manifest
-      uses: rancher/ecm-distro-tools/actions/publish-image@master
-      with:
-        push-to-public: true
-        push-to-prime: false
-        image: updater
-        tag: ${{ env.TAG }}
-        platforms: linux/amd64,linux/arm64
-
-        public-registry: docker.io
-        public-repo: neuvector
-        public-username: ${{ env.DOCKER_USERNAME }}
-        public-password: ${{ env.DOCKER_PASSWORD }}
     - name: Publish prime manifest
       uses: rancher/ecm-distro-tools/actions/publish-image@master
       with:
-        push-to-public: false
+        push-to-public: true
         push-to-prime: true
         image: neuvector-updater
         tag: ${{ env.TAG }}
         platforms: linux/amd64,linux/arm64
+
+        public-registry: docker.io
+        public-repo: rancher
+        public-username: ${{ env.DOCKER_USERNAME }}
+        public-password: ${{ env.DOCKER_PASSWORD }}
 
         prime-registry: ${{ env.PRIME_REGISTRY }}
         prime-repo: rancher

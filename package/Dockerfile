@@ -5,6 +5,7 @@ FROM registry.suse.com/bci/bci-base:${BCI_VERSION} AS builder
 COPY --from=micro / /chroot/
 RUN zypper refresh && zypper --installroot /chroot -n in --no-recommends \
     ca-certificates curl grep && \
+    zypper --installroot /chroot update -y && \
     zypper --installroot /chroot clean -a && \
     rm -rf /chroot/var/log/
 
